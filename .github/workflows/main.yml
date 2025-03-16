@@ -1,0 +1,42 @@
+name: MLOps CI/CD Pipeline  # Name of the workflow
+
+on: 
+  push:
+    branches:
+      - main  # Run when code is pushed to the main branch
+
+jobs:
+  train-test-deploy:
+    runs-on: ubuntu-latest  # Run the job on an Ubuntu Linux machine
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4  # Fetch latest code from GitHub
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'  # Install Python 3.9
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt  # Install required packages
+
+      - name: Train the Model
+        run: python train.py  # Run training script
+
+      - name: Run Tests
+        run: python test.py  # Run test script to check model
+
+      - name: Build Docker Image
+        run: docker build -t my-ml-model:latest .  # Package model into Docker container
+
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Push Docker Image to Docker Hub
+        run: docker push my-ml-model:latest  # Upload Docker image to Docker Hub
+
+      - name: Deploy to Cloud Server
+        run: |
+          ssh user@server 'docker pull my-ml-model:latest && docker run -d -p 5000:5000 my-ml-model'
